@@ -1,0 +1,1 @@
+Provides an automatic width calculation for {{Navbox}} groups.
