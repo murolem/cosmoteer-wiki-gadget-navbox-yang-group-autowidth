@@ -46,13 +46,13 @@ function getLoggers() {
 var loggers = getLoggers();
 var logInfo = loggers.logInfo;
 var logError = loggers.logError;
-$(function() {
-  var sections = Array.from(document.querySelectorAll(".navbox-section"));
+mw.hook("wikipage.content").add(function(content) {
+  var root = content.get()[0];
+  var sections = Array.from(root.querySelectorAll(".navbox-section"));
   if (sections.length === 0) {
-    logInfo("no navbox sections found");
-    return;
+    logInfo('"content" event fired → no navbox sections found');
   } else {
-    logInfo("found navbox sections (".concat(sections.length, "):\n"), [sections]);
+    logInfo('"content" event fired → found navbox sections ('.concat(sections.length, "):\n"), [sections]);
   }
   for (var i = 0; i < sections.length; i++) {
     var section = sections[i];
@@ -63,43 +63,43 @@ $(function() {
     }
     alignGroupsIncludingNested(sectionContent);
   }
-  function alignGroupsIncludingNested(group) {
-    var childGroups = Array.from(
-      group.querySelectorAll(":scope > .navbox-group")
-    );
-    if (childGroups.length === 0) {
-      return;
+});
+function alignGroupsIncludingNested(group) {
+  var childGroups = Array.from(
+    group.querySelectorAll(":scope > .navbox-group")
+  );
+  if (childGroups.length === 0) {
+    return;
+  }
+  var childGroupsTitles = childGroups.map(function(group2) {
+    var result = group2.querySelector(":scope > .navbox-group-title");
+    if (!result) {
+      logError("navbox group title element not found", [group2], { throwErr: true });
     }
-    var childGroupsTitles = childGroups.map(function(group2) {
-      var result = group2.querySelector(":scope > .navbox-group-title");
+    return result;
+  });
+  var childGroupsWidestTitleWidthPx = childGroupsTitles.reduce(function(maxWidth, titleEl) {
+    var groupWidth = titleEl.offsetWidth;
+    if (groupWidth > maxWidth)
+      return groupWidth;
+    else
+      return maxWidth;
+  }, 0);
+  childGroupsWidestTitleWidthPx = Math.ceil(childGroupsWidestTitleWidthPx + 1);
+  group.style.setProperty("--child-groups-title-width", "".concat(childGroupsWidestTitleWidthPx, "px"));
+  childGroupsTitles.forEach(function(titleEl) {
+    return titleEl.style["minWidth"] = "var(--child-groups-title-width)";
+  });
+  for (var j = 0; j < childGroups.length; j++) {
+    var childGroup = childGroups[j];
+    var contentContainer = function() {
+      var result = childGroup.querySelector(":scope > .navbox-group-content");
       if (!result) {
-        logError("navbox group title element not found", [group2], { throwErr: true });
+        logError("navbox group content element not found", [childGroup], { throwErr: true });
+        throw "";
       }
       return result;
-    });
-    var childGroupsWidestTitleWidthPx = childGroupsTitles.reduce(function(maxWidth, titleEl) {
-      var groupWidth = titleEl.offsetWidth;
-      if (groupWidth > maxWidth)
-        return groupWidth;
-      else
-        return maxWidth;
-    }, 0);
-    childGroupsWidestTitleWidthPx = Math.ceil(childGroupsWidestTitleWidthPx + 1);
-    group.style.setProperty("--child-groups-title-width", "".concat(childGroupsWidestTitleWidthPx, "px"));
-    childGroupsTitles.forEach(function(titleEl) {
-      return titleEl.style["width"] = "var(--child-groups-title-width)";
-    });
-    for (var j = 0; j < childGroups.length; j++) {
-      var childGroup = childGroups[j];
-      var contentContainer = function() {
-        var result = childGroup.querySelector(":scope > .navbox-group-content");
-        if (!result) {
-          logError("navbox group content element not found", [childGroup], { throwErr: true });
-          throw "";
-        }
-        return result;
-      }();
-      alignGroupsIncludingNested(contentContainer);
-    }
+    }();
+    alignGroupsIncludingNested(contentContainer);
   }
-});
+}
